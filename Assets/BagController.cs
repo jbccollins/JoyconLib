@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class BagController : MonoBehaviour {
 	
@@ -28,23 +29,10 @@ public class BagController : MonoBehaviour {
 		}
 	}
 
-    // Update is called once per frame
-    void Update () {
-		// make sure the Joycon only gets checked if attached
+	void FixedUpdate () {
 		if (joycons.Count > 0)
         {
 			Joycon j = joycons [jc_ind];
-			// GetButtonDown checks if a button has been pressed (not held)
-            if (j.GetButtonDown(Joycon.Button.SHOULDER_2))
-            {
-				Debug.Log ("Shoulder button 2 pressed");
-				// GetStick returns a 2-element vector with x/y joystick components
-				Debug.Log(string.Format("Stick x: {0:N} Stick y: {1:N}",j.GetStick()[0],j.GetStick()[1]));
-            
-				// Joycon has no magnetometer, so it cannot accurately determine its yaw value. Joycon.Recenter allows the user to reset the yaw value.
-				j.Recenter ();
-			}
-			// GetButtonDown checks if a button has been released
 			if (j.GetButtonUp (Joycon.Button.SHOULDER_2))
 			{
 				Debug.Log ("Shoulder button 2 released");
@@ -56,9 +44,41 @@ public class BagController : MonoBehaviour {
 				float upForce = System.Math.Abs(accel.x);
 				// Joycon z axis is the same as Unity's z axis
 				float forwardForce = System.Math.Abs(accel.z);
+				float sidewaysForce = accel.y;
 				Vector3 force = new Vector3(0, upForce, forwardForce) * thrust;
-				Debug.Log(force);
 				rb.AddForce(force);
+			}
+		}
+	}
+
+    // Update is called once per frame
+    void Update () {
+		if ( Input.GetKeyDown ( KeyCode.P ) ) {
+			Debug.Log("P PRESSED");
+			//int scene = SceneManager.GetActiveScene().buildIndex;
+			//SceneManager.LoadScene(scene, LoadSceneMode.Single);
+			// Use a coroutine to load the Scene in the background
+            StartCoroutine(LoadYourAsyncScene());
+		}
+		// make sure the Joycon only gets checked if attached
+		if (joycons.Count > 0)
+        {
+			Joycon j = joycons [jc_ind];
+			if (j.GetButtonDown(Joycon.Button.DPAD_UP)) {
+				// Restart the level
+				Debug.Log(SceneManager.GetActiveScene ().name);
+				//SceneManager.LoadScene (SceneManager.GetActiveScene ().name);
+				return;
+			}
+			// GetButtonDown checks if a button has been pressed (not held)
+            if (j.GetButtonDown(Joycon.Button.SHOULDER_2))
+            {
+				Debug.Log ("Shoulder button 2 pressed");
+				// GetStick returns a 2-element vector with x/y joystick components
+				Debug.Log(string.Format("Stick x: {0:N} Stick y: {1:N}",j.GetStick()[0],j.GetStick()[1]));
+            
+				// Joycon has no magnetometer, so it cannot accurately determine its yaw value. Joycon.Recenter allows the user to reset the yaw value.
+				j.Recenter ();
 			}
 			// GetButtonDown checks if a button is currently down (pressed or held)
 			if (j.GetButton (Joycon.Button.SHOULDER_2))
@@ -78,25 +98,21 @@ public class BagController : MonoBehaviour {
                 // (Useful for dynamically changing rumble values.)
 				// Then call SetRumble(0,0,0) when you want to turn it off.
 			}
+        }
+    }
+    IEnumerator LoadYourAsyncScene()
+    {
+        // The Application loads the Scene in the background as the current Scene runs.
+        // This is particularly good for creating loading screens.
+        // You could also load the Scene by using sceneBuildIndex. In this case Scene2 has
+        // a sceneBuildIndex of 1 as shown in Build Settings.
 
-            stick = j.GetStick();
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync("Testing");
 
-            // Gyro values: x, y, z axis values (in radians per second)
-            gyro = j.GetGyro();
-
-            // Accel values:  x, y, z axis values (in Gs)
-            accel = j.GetAccel();
-
-			//Debug.Log(accel);
-			//rb.velocity += accel * Time.deltaTime;
-
-            orientation = j.GetVector();
-			if (j.GetButton(Joycon.Button.DPAD_UP)){
-				gameObject.GetComponent<Renderer>().material.color = Color.red;
-			} else{
-				gameObject.GetComponent<Renderer>().material.color = Color.blue;
-			}
-            //gameObject.transform.rotation = orientation;
+        // Wait until the asynchronous scene fully loads
+        while (!asyncLoad.isDone)
+        {
+            yield return null;
         }
     }
 }
