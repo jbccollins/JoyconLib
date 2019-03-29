@@ -15,23 +15,36 @@ public class GameState : MonoBehaviour {
     public Vector3 accel;
     public int jc_ind = 0;
     public Quaternion orientation;
-	private Rigidbody rb;
+	private Rigidbody bagRididBody;
 	private Quaternion originalRotation = Quaternion.identity;
 	private Vector3 originalVelocity = Vector3.zero;
 	private Vector3 originalPosition = new Vector3(0, 2.0f, -15.0f);
 	private Quaternion originalCameraRotation = Quaternion.Euler(new Vector3(20, 0, 0));
+    private List<Rigidbody> thrownBags = new List<Rigidbody>();
 
 	private void reset () {
-		rb.useGravity = false;
-		rb.transform.position = originalPosition;
-		rb.transform.rotation = originalRotation;
-		rb.velocity = originalVelocity;
-		rb.angularVelocity = originalVelocity;
+		bagRididBody.useGravity = false;
+		bagRididBody.transform.position = originalPosition;
+		bagRididBody.transform.rotation = originalRotation;
+		bagRididBody.velocity = originalVelocity;
+		bagRididBody.angularVelocity = originalVelocity;
 		mainCamera.transform.rotation = originalCameraRotation;
 	}
 
+    private void CloneBag () {
+        thrownBags.Add(bagRididBody);
+        Rigidbody newBagRigidBody = Instantiate(bagRididBody);
+        newBagRigidBody.useGravity = false;
+        newBagRigidBody.transform.position = originalPosition;
+        newBagRigidBody.transform.rotation = originalRotation;
+        newBagRigidBody.velocity = originalVelocity;
+        newBagRigidBody.angularVelocity = originalVelocity;
+        mainCamera.transform.rotation = originalCameraRotation;
+        bagRididBody = newBagRigidBody;
+    }
+
 	private void throwBag (Joycon j) {
-		rb.useGravity = true;
+		bagRididBody.useGravity = true;
 		//Debug.Log (transform.forward);
 		accel = j.GetAccel();
 		
@@ -41,12 +54,12 @@ public class GameState : MonoBehaviour {
 		// Joycon z axis is the same as Unity's z axis
 		float forwardForce = System.Math.Abs(accel.z);
 		Vector3 force = new Vector3(0, upForce, forwardForce) * thrust;
-		rb.AddForce(force);
+		bagRididBody.AddForce(force);
 	}
 
 	private void moveBag(bool left) {
-		Vector3 newPosition = new Vector3(rb.transform.position.x + (0.05f * (left ? 1.0f : -1.0f)), rb.transform.position.y, rb.transform.position.z);
-		rb.transform.position = newPosition;
+		Vector3 newPosition = new Vector3(bagRididBody.transform.position.x + (0.05f * (left ? 1.0f : -1.0f)), bagRididBody.transform.position.y, bagRididBody.transform.position.z);
+		bagRididBody.transform.position = newPosition;
 	}
 
 	// Position camera to follow behind player's head.
@@ -55,14 +68,14 @@ public class GameState : MonoBehaviour {
 		// orientation as an angle when projected onto the XZ plane
 		// this functionality is modularise into a separate method because
 		// I use it elsewhere
-		float playerAngle = AngleOnXZPlane (rb.transform);
+		float playerAngle = AngleOnXZPlane (bagRididBody.transform);
 		float cameraAngle = AngleOnXZPlane (mainCamera.transform);
 
 		// difference in orientations
 		float rotationDiff = Mathf.DeltaAngle(cameraAngle, playerAngle);
 
 		// rotate around target by time-sensitive difference between these angles
-		mainCamera.transform.RotateAround(rb.transform.position, Vector3.up, rotationDiff * Time.deltaTime);
+		mainCamera.transform.RotateAround(bagRididBody.transform.position, Vector3.up, rotationDiff * Time.deltaTime);
 	}
 
 	// Find the angle made when projecting the rotation onto the xz plane.
@@ -79,12 +92,12 @@ public class GameState : MonoBehaviour {
 	private void rotateBag(float stickX) {
 		Debug.Log(string.Format("Stick x: {0:N}",stickX));
 		// float speed = 1.0f * (stickX > 0 ? 1.0f : -1.0f);
-		// Quaternion newBagRotation = Quaternion.Euler(new Vector3(rb.transform.rotation.x, rb.transform.rotation.y + speed, rb.transform.rotation.z));
+		// Quaternion newBagRotation = Quaternion.Euler(new Vector3(bagRididBody.transform.rotation.x, bagRididBody.transform.rotation.y + speed, bagRididBody.transform.rotation.z));
 		// Quaternion newCameraRotation = Quaternion.Euler(new Vector3(20, mainCamera.transform.rotation.y + speed, mainCamera.transform.rotation.z));
 		
-		//rb.transform.rotation = newBagRotation;
+		//bagRididBody.transform.rotation = newBagRotation;
 		Vector3 rot = Vector3.up * (stickX > 0 ? 1 : -1);
-		rb.transform.Rotate(rot);
+		bagRididBody.transform.Rotate(rot);
 		//mainCamera.transform.Rotate(rot);
 		Follow();
 	}
@@ -93,8 +106,8 @@ public class GameState : MonoBehaviour {
     {
         gyro = new Vector3(0, 0, 0);
         accel = new Vector3(0, 0, 0);
-		rb = activeBag.GetComponent<Rigidbody>();
-		rb.useGravity = false;
+		bagRididBody = activeBag.GetComponent<Rigidbody>();
+		bagRididBody.useGravity = false;
 
         // get the public Joycon array attached to the JoyconManager in scene
         joycons = JoyconManager.Instance.j;
@@ -113,8 +126,11 @@ public class GameState : MonoBehaviour {
 				throwBag(j);
 			}
 			if (j.GetButtonDown(Joycon.Button.DPAD_UP)) {
-				reset();
-			}
+                //reset();
+                Debug.Log("DPAD_UP");
+                CloneBag();
+
+            }
 			if (j.GetButton(Joycon.Button.DPAD_LEFT)) {
 				moveBag(false);
 			}
